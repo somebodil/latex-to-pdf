@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import inlined from "inlined-engine";
 import { compileBuiltIn, type BuiltIn } from "./builtin.ts";
 import { compile, findProgram, type Compiled } from "./compile.ts";
-import { fetchedEngine, inlinedEngine } from "./engine-files.ts";
+import { inlinedEngine } from "./engine-files.ts";
 import { engineChoiceOf, engineFor, ENGINES, type Engine, type EngineChoice, type Fetch } from "./engine.ts";
 import { askedPdfOf, isLatexNote, latexOf, pdfPathOf, programOf } from "./latex.ts";
 import { samePdf } from "./pdf.ts";
@@ -125,8 +125,7 @@ export default class LatexToPdfPlugin extends Plugin {
    */
   private builtIn(root: string): BuiltIn {
     const cache = join(root, this.manifest.dir ?? join(this.app.vault.configDir, "plugins", this.manifest.id), "engine");
-    // A build that has the engine in it uses that one. Without it, the engine is fetched when it is first needed: for development only.
-    return { engine: inlined === null ? fetchedEngine(cache) : inlinedEngine(inlined), cache, fetch: fetchUrl };
+    return { engine: inlinedEngine(inlined), cache, fetch: fetchUrl };
   }
 
   /** The notes that are named as LaTeX documents: `Name.tex.md` */

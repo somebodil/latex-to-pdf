@@ -5,9 +5,8 @@ import esbuild from "esbuild";
 import { checked, ENGINE } from "./src/pins.ts";
 
 // `node esbuild.config.mjs production` builds once. Without the argument it rebuilds on every change.
-// With `engine` as well, the built-in engine is put into main.js: see `inlinedEngine` below.
+// Either way the built-in engine is put into main.js: see `inlinedEngine` below.
 const production = process.argv.includes("production");
-const withEngine = process.argv.includes("engine");
 
 /** Where the files of the engine are kept between builds. Git passes over this folder: the files are not part of this repository. */
 const ENGINE_FOLDER = ".engine";
@@ -31,8 +30,8 @@ async function engineFile(file) {
 
 /**
  * Gives the source its `inlined-engine`: the engine, each file gzipped and
- * as base64, or null. With null the plugin fetches the engine when it is
- * first needed, which is for development only: see src/engine-files.ts.
+ * as base64. The plugin then holds its engine, and fetches no part of
+ * itself when it runs.
  */
 const inlinedEngine = {
   name: "inlined-engine",
@@ -40,7 +39,7 @@ const inlinedEngine = {
     build.onResolve({ filter: /^inlined-engine$/ }, () => ({ path: "inlined-engine", namespace: "inlined-engine" }));
     build.onLoad({ filter: /.*/, namespace: "inlined-engine" }, async () => {
       const pack = async (file) => gzipSync(await engineFile(file), { level: 9 }).toString("base64");
-      const packed = withEngine ? { script: await pack(ENGINE.script), wasm: await pack(ENGINE.wasm) } : null;
+      const packed = { script: await pack(ENGINE.script), wasm: await pack(ENGINE.wasm) };
       return { contents: `export default ${JSON.stringify(packed)};`, loader: "js" };
     });
   },

@@ -4,11 +4,10 @@
   "description": "Obsidian plugin that builds the LaTeX in a note into a PDF beside the note",
   "private": true,
   "type": "module",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc --noEmit && node esbuild.config.mjs production",
-    "build:engine": "tsc --noEmit && node esbuild.config.mjs production engine",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "node --test \"src/**/*.test.ts\"",

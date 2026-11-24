@@ -8,7 +8,7 @@ Not made by Obsidian.
 
 ## Requirements
 
-- Obsidian 1.8 or later on a computer. Not in the app for phones and tablets: the plugin uses what only the app for computers has.
+- Obsidian 1.8.10 or later on a computer. Not in the app for phones and tablets: the plugin uses what only the app for computers has.
 - One of the two:
     - A LaTeX program on that computer: [TeX Live](https://tug.org/texlive/), [MacTeX](https://tug.org/mactex/) or [MiKTeX](https://miktex.org), with the packages your documents use. Where there is one, it is used.
     - No LaTeX at all, and the network for the first build of a document: the [built-in engine](#the-built-in-engine) then builds it.
@@ -114,20 +114,21 @@ A plugin that is brought with `--plugin` is taken out after the run, and what th
 
 ```sh
 npm install
-npm run check          # types, lint, and the tests that need no Obsidian
-npm run build          # main.js without the built-in engine: 17 kB
-npm run build:engine   # main.js with the built-in engine inside: 833 kB
+npm run check   # types, lint, and the tests that need no Obsidian
+npm run build   # main.js, with the built-in engine inside: 833 kB
 ```
 
 The built-in engine is two files of the SwiftLaTeX project, `swiftlatexpdftex.js` and `swiftlatexpdftex.wasm`. They are not in this repository. `src/pins.ts` names them as the site of SwiftLaTeX publishes them, by the commit that holds them, with the SHA-256 of each: a file that is anything else is refused, in the build and in the plugin.
 
-- **`npm run build:engine` is the build for a release.** It fetches the two files into `.engine/`, which git passes over, checks them, and puts them into `main.js`. The plugin then fetches no part of itself.
-- **`npm run build` is for development.** Its `main.js` has no engine: where no LaTeX program is installed, the plugin fetches the two files from `raw.githubusercontent.com` the first time it needs them, checks them, and keeps them in its folder. A plugin in the community directory of Obsidian may not fetch its own parts, so this build is not for a release there.
+A build fetches the two files into `.engine/`, which git passes over, checks them, and puts them into `main.js`. So the first build needs the network, and the plugin itself never fetches a part of itself when it runs: a plugin in the community directory of Obsidian may not.
 
-Where the engine comes from is one place in the source, `src/engine-files.ts`. Nothing of SwiftLaTeX is copied into this repository: the engine is run as it is published, in a worker, and told what to do with the messages its script answers to (`src/builtin.ts`).
+Nothing of SwiftLaTeX is copied into this repository: the engine is run as it is published, in a worker, and told what to do with the messages its script answers to (`src/builtin.ts`).
 
 ## License
 
-MIT, for what is in this repository.
+[AGPL-3.0](LICENSE).
 
-The built-in engine is not in this repository, and has licences of its own: the [SwiftLaTeX](https://github.com/SwiftLaTeX/SwiftLaTeX) repository is under AGPL-3.0, and [pdfTeX](https://www.tug.org/applications/pdftex/), which its `.wasm` is made of, under GPL-2.0-or-later. A `main.js` that is built with `npm run build:engine` holds these two files, and whoever passes it on has to follow their licences for them.
+The `main.js` of a release holds the built-in engine, unchanged: the pdfTeX of the [SwiftLaTeX](https://github.com/SwiftLaTeX/SwiftLaTeX) project (Copyright (c) SwiftLab, 2018-2022), which is under AGPL-3.0, made of [pdfTeX](https://www.tug.org/applications/pdftex/), which is under GPL-2.0-or-later and uses code of TeX by Donald Knuth. The plugin is under the same licence as its engine.
+
+- **The source of the engine** is the repository of SwiftLaTeX: the folder [`pdftex.wasm`](https://github.com/SwiftLaTeX/SwiftLaTeX/tree/master/pdftex.wasm). The two files a build takes are named in `src/pins.ts`, by the commit that holds them and by their SHA-256.
+- **The source of the plugin** is this repository, at the tag of the release.

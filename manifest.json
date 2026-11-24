@@ -2,7 +2,7 @@
   "id": "latex-to-pdf",
   "name": "LaTeX to PDF",
   "version": "0.1.0",
-  "minAppVersion": "1.8.0",
+  "minAppVersion": "1.8.10",
   "description": "Builds the LaTeX in a note into a PDF beside the note, with the LaTeX program on your computer or, where there is none, with a built-in pdfTeX.",
   "author": "somebodil",
   "authorUrl": "https://github.com/somebodil",

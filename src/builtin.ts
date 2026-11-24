@@ -106,7 +106,7 @@ export async function compileBuiltIn(latex: string, inputs: string, { engine, ca
   await mkdir(cache, { recursive: true });
   await writeFile(join(cache, ".gitignore"), "*\n", { flag: "wx" }).catch(() => undefined);
 
-  const tex = await serveTexFiles(await engine(counted), cache, inputs, counted);
+  const tex = await serveTexFiles(await engine(), cache, inputs, counted);
   const page = URL.createObjectURL(new Blob([WORKER], { type: "text/javascript" }));
   const worker = new Worker(page, { name: tex.url });
   try {
