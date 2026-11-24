@@ -8,7 +8,6 @@ export interface Pinned {
   url: string;
   /** The SHA-256 of the file, in hex. A file that is anything else is refused. */
   sha256: string;
-  bytes: number;
 }
 
 /** The two files of the engine: the script that runs it in a worker, and the program itself */
@@ -36,13 +35,11 @@ export const ENGINE: Pins = {
     name: "swiftlatexpdftex.js",
     url: `${PUBLISHED}swiftlatexpdftex.js`,
     sha256: "44d7dd9bc63b826985c87b8ada50512b8fae02cbf5eb3c57e258129ed9602536",
-    bytes: 85387,
   },
   wasm: {
     name: "swiftlatexpdftex.wasm",
     url: `${PUBLISHED}swiftlatexpdftex.wasm`,
     sha256: "a2847460f4c55e623e2ccd4898ee629596a1ce121395eeda1cfbdf7a94893c62",
-    bytes: 1772266,
   },
 };
 

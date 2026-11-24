@@ -1,8 +1,6 @@
 /**
- * Where the bytes of the built-in engine come from: they are inside the
- * plugin, put there by the build. This is the one place that knows; the rest
- * of the plugin asks an `EngineSource`. A file that is not the one pinned in
- * `pins.ts` is refused.
+ * The bytes of the built-in engine: they are inside the plugin, put there
+ * by the build. A file that is not the one pinned in `pins.ts` is refused.
  *
  * The plugin never fetches the engine when it runs: a plugin in the
  * community directory of Obsidian may not fetch its own parts.
@@ -20,24 +18,17 @@ export interface EngineFiles {
   wasm: Uint8Array;
 }
 
-/** Gives the files of the engine */
-export type EngineSource = () => Promise<EngineFiles>;
-
 /** The engine as the build puts it into `main.js`: each file gzipped, as base64. See `esbuild.config.mjs`. */
 export interface Packed {
   script: string;
   wasm: string;
 }
 
-/** The engine that is inside the plugin: the build put it into `main.js`. Nothing is fetched. */
-export function inlinedEngine(packed: Packed, pins: Pins = ENGINE): EngineSource {
-  let files: EngineFiles | null = null;
-  return () => {
-    files ??= {
-      script: checked(pins.script, new Uint8Array(gunzipSync(Buffer.from(packed.script, "base64")))),
-      wasm: checked(pins.wasm, new Uint8Array(gunzipSync(Buffer.from(packed.wasm, "base64")))),
-    };
-    return Promise.resolve(files);
+/** Unpacks the engine that is inside the plugin: the build put it into `main.js`. Nothing is fetched. */
+export function inlinedEngine(packed: Packed, pins: Pins = ENGINE): EngineFiles {
+  return {
+    script: checked(pins.script, new Uint8Array(gunzipSync(Buffer.from(packed.script, "base64")))),
+    wasm: checked(pins.wasm, new Uint8Array(gunzipSync(Buffer.from(packed.wasm, "base64")))),
   };
 }
 

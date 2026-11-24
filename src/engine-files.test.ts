@@ -9,18 +9,18 @@ const script = bytes("// the script of the engine");
 const wasm = new Uint8Array([0x00, 0x61, 0x73, 0x6d, 0x01, 0xff, 0x80]);
 
 const pins: Pins = {
-  script: { name: "engine.js", url: "https://example.org/pinned/engine.js", sha256: sha256Of(script), bytes: script.byteLength },
-  wasm: { name: "engine.wasm", url: "https://example.org/pinned/engine.wasm", sha256: sha256Of(wasm), bytes: wasm.byteLength },
+  script: { name: "engine.js", url: "https://example.org/pinned/engine.js", sha256: sha256Of(script) },
+  wasm: { name: "engine.wasm", url: "https://example.org/pinned/engine.wasm", sha256: sha256Of(wasm) },
 };
 
 describe("inlinedEngine", () => {
   const pack = (data: Uint8Array): string => gzipSync(data).toString("base64");
 
-  it("unpacks the engine the build put in", async () => {
-    assert.deepEqual(await inlinedEngine({ script: pack(script), wasm: pack(wasm) }, pins)(), { script, wasm });
+  it("unpacks the engine the build put in", () => {
+    assert.deepEqual(inlinedEngine({ script: pack(script), wasm: pack(wasm) }, pins), { script, wasm });
   });
 
   it("refuses an engine that is not the one pinned", () => {
-    assert.throws(() => void inlinedEngine({ script: pack(script), wasm: pack(bytes("another program")) }, pins)(), /"engine\.wasm" is not the file this plugin was made for/);
+    assert.throws(() => inlinedEngine({ script: pack(script), wasm: pack(bytes("another program")) }, pins), /"engine\.wasm" is not the file this plugin was made for/);
   });
 });

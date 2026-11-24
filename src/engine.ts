@@ -45,7 +45,7 @@ export function engineFor(choice: EngineChoice, program: string, found: string |
   return "built-in";
 }
 
-/** What a request gave: the built-in engine and its files are fetched through this, so that a test needs no network */
+/** What a request gave: the files of TeX are fetched through this, so that a test needs no network */
 export interface Fetched {
   status: number;
   /** With the names in small letters */

@@ -1,7 +1,6 @@
 /** Runs the LaTeX program of the computer. This is the part that needs a desktop: it starts a program and writes into a folder of its own. */
 
 import { execFile } from "node:child_process";
-import { createHash } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -30,12 +29,13 @@ export interface Compiled {
  * The file of a LaTeX program, or null when the computer has none of that
  * name. A name with a folder in it is taken as it is.
  */
-export function findProgram(name: string, env: NodeJS.ProcessEnv = process.env, platform: string = process.platform): string | null {
-  const names = platform === "win32" && !/\.exe$/i.test(name) ? [`${name}.exe`, name] : [name];
+export function findProgram(name: string): string | null {
+  const isWindows = process.platform === "win32";
+  const names = isWindows && !/\.exe$/i.test(name) ? [`${name}.exe`, name] : [name];
   if (isAbsolute(name) || /[\\/]/.test(name)) {
-    return names.map((one) => one).find((one) => existsSync(one)) ?? null;
+    return names.find((one) => existsSync(one)) ?? null;
   }
-  const places = [...(env.PATH ?? env.Path ?? "").split(delimiter).filter((place) => place !== ""), ...(platform === "win32" ? [] : MORE_PLACES)];
+  const places = [...(process.env.PATH ?? "").split(delimiter).filter((place) => place !== ""), ...(isWindows ? [] : MORE_PLACES)];
   for (const place of places) {
     for (const one of names) {
       const file = join(place, one);
@@ -68,13 +68,9 @@ function runOnce(program: string, folder: string, inputs: string, seconds: numbe
   });
 }
 
-async function carried(folder: string): Promise<string> {
-  const hash = createHash("sha1");
-  for (const name of CARRIED) {
-    hash.update(await readFile(join(folder, name)).catch(() => new Uint8Array()));
-    hash.update("\0");
-  }
-  return hash.digest("hex");
+/** What a run left for the next, file by file: a file that is not there is an empty one */
+function carried(folder: string): Promise<Buffer[]> {
+  return Promise.all(CARRIED.map((name) => readFile(join(folder, name)).catch(() => Buffer.alloc(0))));
 }
 
 /**
@@ -102,7 +98,7 @@ export async function compile(latex: string, program: string, inputs: string, se
         throw new Error(errorOf(said.trim() !== "" ? said : log) || "The LaTeX program ended with an error.");
       }
       const after = await carried(folder);
-      if (runs >= MOST_RUNS || (after === before && !wantsAnotherRun(said))) {
+      if (runs >= MOST_RUNS || (after.every((file, at) => file.equals(before[at] ?? Buffer.alloc(1))) && !wantsAnotherRun(said))) {
         return { pdf: new Uint8Array(await readFile(join(folder, "main.pdf"))), pages: pagesOf(said), runs };
       }
       before = after;

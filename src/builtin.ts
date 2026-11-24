@@ -10,15 +10,15 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { MOST_RUNS, type Compiled } from "./compile.ts";
-import type { EngineSource } from "./engine-files.ts";
+import type { EngineFiles } from "./engine-files.ts";
 import { passes, withLetters, type Fetch, type Pass } from "./engine.ts";
 import { ENGINE } from "./pins.ts";
 import { serveTexFiles, type TexFiles } from "./tex-files.ts";
 
 /** What the built-in engine needs of the plugin */
 export interface BuiltIn {
-  /** Where the files of the engine come from: see `engine-files.ts` */
-  engine: EngineSource;
+  /** The files of the engine: see `engine-files.ts` */
+  engine: EngineFiles;
   /** The folder where what was fetched is kept */
   cache: string;
   fetch: Fetch;
@@ -106,7 +106,7 @@ export async function compileBuiltIn(latex: string, inputs: string, { engine, ca
   await mkdir(cache, { recursive: true });
   await writeFile(join(cache, ".gitignore"), "*\n", { flag: "wx" }).catch(() => undefined);
 
-  const tex = await serveTexFiles(await engine(), cache, inputs, counted);
+  const tex = await serveTexFiles(engine, cache, inputs, counted);
   const page = URL.createObjectURL(new Blob([WORKER], { type: "text/javascript" }));
   const worker = new Worker(page, { name: tex.url });
   try {

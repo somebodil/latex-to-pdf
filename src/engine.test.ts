@@ -36,7 +36,7 @@ describe("engineFor", () => {
     assert.equal(engineFor("built-in", "pdflatex", null), "built-in");
   });
 
-  it("fails as before when only the installed program is allowed, and there is none", () => {
+  it("fails when only the installed program is allowed, and there is none", () => {
     assert.throws(() => engineFor("installed", "pdflatex", null), {
       message: 'The LaTeX program "pdflatex" is not on this computer. Install TeX Live or MacTeX, or name the file of the program in the settings.',
     });

@@ -5,7 +5,7 @@ import { checked, ENGINE, sha256Of, TEX_HOST, type Pinned } from "./pins.ts";
 const bytes = (text: string): Uint8Array => new TextEncoder().encode(text);
 
 describe("checked", () => {
-  const file: Pinned = { name: "engine.wasm", url: "https://example.org/engine.wasm", sha256: sha256Of(bytes("the engine")), bytes: 10 };
+  const file: Pinned = { name: "engine.wasm", url: "https://example.org/engine.wasm", sha256: sha256Of(bytes("the engine")) };
 
   it("gives back the bytes of the file that is pinned", () => {
     assert.deepEqual(checked(file, bytes("the engine")), bytes("the engine"));
