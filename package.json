@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc --noEmit && node esbuild.config.mjs production",
+    "build:engine": "tsc --noEmit && node esbuild.config.mjs production engine",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "test": "node --test \"src/**/*.test.ts\"",

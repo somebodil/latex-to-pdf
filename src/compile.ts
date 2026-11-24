@@ -13,7 +13,7 @@ import { pagesOf } from "./pdf.ts";
 const MORE_PLACES = ["/Library/TeX/texbin", "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/opt/local/bin"];
 
 /** A document is run again while its numbers and outline still change, at most this often */
-const MOST_RUNS = 4;
+export const MOST_RUNS = 4;
 
 /** What a run leaves for the next: where the labels are, the outline, the contents */
 const CARRIED = ["main.aux", "main.out", "main.toc"];

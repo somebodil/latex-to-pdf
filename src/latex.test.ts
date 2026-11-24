@@ -32,15 +32,15 @@ describe("latexOf", () => {
 
 describe("pdfPathOf and isLatexNote", () => {
   it("puts the PDF beside the note, under its name", () => {
-    assert.equal(pdfPathOf("10_Private/Resume.tex.md"), "10_Private/Resume.pdf");
+    assert.equal(pdfPathOf("Papers/Resume.tex.md"), "Papers/Resume.pdf");
     assert.equal(pdfPathOf("Paper.md"), "Paper.pdf");
     assert.equal(pdfPathOf("a.b/c.d.TEX.MD"), "a.b/c.d.pdf");
   });
 
   it("puts the PDF where the note asks for it, from the root of the vault", () => {
-    assert.equal(pdfPathOf("10_Private/Resume.tex.md", "Resume.pdf"), "Resume.pdf");
-    assert.equal(pdfPathOf("10_Private/Resume.tex.md", " /Papers/My CV.PDF "), "Papers/My CV.PDF");
-    assert.equal(pdfPathOf("a/b.md", "이력서/이력서.pdf"), "이력서/이력서.pdf");
+    assert.equal(pdfPathOf("Papers/Resume.tex.md", "Resume.pdf"), "Resume.pdf");
+    assert.equal(pdfPathOf("Papers/Resume.tex.md", " /Papers/My CV.PDF "), "Papers/My CV.PDF");
+    assert.equal(pdfPathOf("a/b.md", "문서/보고서.pdf"), "문서/보고서.pdf");
   });
 
   it("takes no place outside the vault, and none that is not a PDF", () => {

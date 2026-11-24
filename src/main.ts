@@ -1,6 +1,10 @@
-import { FileSystemAdapter, normalizePath, Notice, Plugin, PluginSettingTab, Setting, TFile, type App } from "obsidian";
+import { FileSystemAdapter, normalizePath, Notice, Plugin, PluginSettingTab, requestUrl, Setting, TFile, type App } from "obsidian";
 import { dirname, join } from "node:path";
-import { compile, findProgram } from "./compile.ts";
+import inlined from "inlined-engine";
+import { compileBuiltIn, type BuiltIn } from "./builtin.ts";
+import { compile, findProgram, type Compiled } from "./compile.ts";
+import { fetchedEngine, inlinedEngine } from "./engine-files.ts";
+import { engineChoiceOf, engineFor, ENGINES, type Engine, type EngineChoice, type Fetch } from "./engine.ts";
 import { askedPdfOf, isLatexNote, latexOf, pdfPathOf, programOf } from "./latex.ts";
 import { samePdf } from "./pdf.ts";
 
@@ -21,9 +25,28 @@ interface Runner {
 interface Settings {
   /** The LaTeX program for a document that asks for none: a name, or the whole path of a file */
   program: string;
+  /** What builds a document: the installed program, the built-in engine, or the built-in engine where no program is installed */
+  engine: EngineChoice;
 }
 
-const DEFAULT_SETTINGS: Settings = { program: "pdflatex" };
+const DEFAULT_SETTINGS: Settings = { program: "pdflatex", engine: "auto" };
+
+/** What the settings show for each choice */
+const ENGINE_NAMES: Record<EngineChoice, string> = {
+  auto: "The installed program, or the built-in engine where there is none",
+  installed: "The installed program only",
+  "built-in": "The built-in engine only",
+};
+
+/** A request as Obsidian makes it: an answer that is not 200 is given back, and not thrown */
+const fetchUrl: Fetch = async (url) => {
+  const got = await requestUrl({ url, throw: false });
+  const headers: Record<string, string> = {};
+  for (const [name, value] of Object.entries(got.headers)) {
+    headers[name.toLowerCase()] = value;
+  }
+  return { status: got.status, headers, body: new Uint8Array(got.arrayBuffer) };
+};
 
 /** What came of one note */
 interface Built {
@@ -33,6 +56,15 @@ interface Built {
   bytes: number;
   /** False when the PDF that was there is the same but for the time it was made, and was left as it is */
   written: boolean;
+  /** What built it: the LaTeX program of the computer, or the engine that comes with the plugin */
+  engine: Engine;
+  /** How many bytes the built-in engine had fetched for it: nothing when all it needs is kept */
+  fetched?: number;
+}
+
+/** What built a PDF, for a person */
+function engineSaid(one: Built): string {
+  return one.engine === "installed" ? "installed program" : `built-in engine${one.fetched === undefined || one.fetched === 0 ? "" : `, ${String(one.fetched)} bytes fetched`}`;
 }
 
 export default class LatexToPdfPlugin extends Plugin {
@@ -43,6 +75,7 @@ export default class LatexToPdfPlugin extends Plugin {
     if (typeof saved?.program === "string" && saved.program.trim() !== "") {
       this.config.program = saved.program.trim();
     }
+    this.config.engine = engineChoiceOf(saved?.engine);
 
     this.addCommand({
       id: "build-note",
@@ -77,6 +110,25 @@ export default class LatexToPdfPlugin extends Plugin {
     await this.saveData(this.config);
   }
 
+  get engine(): EngineChoice {
+    return this.config.engine;
+  }
+
+  async setEngine(engine: EngineChoice): Promise<void> {
+    this.config.engine = engine;
+    await this.saveData(this.config);
+  }
+
+  /**
+   * What the built-in engine needs. What it fetches is kept in a folder of
+   * the plugin, which goes when the plugin is taken out.
+   */
+  private builtIn(root: string): BuiltIn {
+    const cache = join(root, this.manifest.dir ?? join(this.app.vault.configDir, "plugins", this.manifest.id), "engine");
+    // A build that has the engine in it uses that one. Without it, the engine is fetched when it is first needed: for development only.
+    return { engine: inlined === null ? fetchedEngine(cache) : inlinedEngine(inlined), cache, fetch: fetchUrl };
+  }
+
   /** The notes that are named as LaTeX documents: `Name.tex.md` */
   private latexNotes(): TFile[] {
     return this.app.vault
@@ -102,7 +154,7 @@ export default class LatexToPdfPlugin extends Plugin {
       const built: Built[] = [];
       for (const note of notes) {
         const one = await this.build(note);
-        runner.log(`${one.pdf}: ${one.pages === null ? "" : `${String(one.pages)} pages, `}${String(one.bytes)} bytes${one.written ? "" : ", the same as before"}`);
+        runner.log(`${one.pdf}: ${one.pages === null ? "" : `${String(one.pages)} pages, `}${String(one.bytes)} bytes${one.written ? "" : ", the same as before"}, ${engineSaid(one)}`);
         built.push(one);
       }
       runner.done({ built, seconds: Math.round((Date.now() - started) / 100) / 10 });
@@ -136,7 +188,7 @@ export default class LatexToPdfPlugin extends Plugin {
         failed.push(`${note.path}\n${error instanceof Error ? error.message : String(error)}`);
       }
     }
-    const said = done.map((one) => `${one.pdf}${one.pages === null ? "" : `: ${String(one.pages)} pages`}${one.written ? "" : " (the same as before)"}`);
+    const said = done.map((one) => `${one.pdf}${one.pages === null ? "" : `: ${String(one.pages)} pages`}${one.written ? "" : " (the same as before)"}, ${engineSaid(one)}`);
     notice.setMessage([...(said.length > 0 ? ["Built:", ...said] : []), ...(failed.length > 0 ? ["Not built:", ...failed] : [])].join("\n"));
     window.setTimeout(() => notice.hide(), failed.length > 0 ? 20_000 : 6000);
   }
@@ -160,10 +212,10 @@ export default class LatexToPdfPlugin extends Plugin {
     const path = normalizePath(asked);
     const name = programOf(latex) ?? this.config.program;
     const program = findProgram(name);
-    if (program === null) {
-      throw new Error(`The LaTeX program "${name}" is not on this computer. Install TeX Live or MacTeX, or name the file of the program in the settings.`);
-    }
-    const made = await compile(latex, program, join(vault.adapter.getBasePath(), dirname(note.path)));
+    // Fails here when nothing can build the document: no program of that name, and the built-in engine not allowed or not able
+    const engine = engineFor(this.config.engine, name, program);
+    const inputs = join(vault.adapter.getBasePath(), dirname(note.path));
+    const made: Compiled & { fetched?: number } = engine === "installed" && program !== null ? await compile(latex, program, inputs) : await compileBuiltIn(latex, inputs, this.builtIn(vault.adapter.getBasePath()));
 
     const folder = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
     if (folder !== "" && !(await vault.adapter.exists(folder))) {
@@ -190,7 +242,7 @@ export default class LatexToPdfPlugin extends Plugin {
     } else {
       await vault.createBinary(path, data);
     }
-    return { note: note.path, pdf: path, pages: made.pages, bytes: made.pdf.byteLength, written };
+    return { note: note.path, pdf: path, pages: made.pages, bytes: made.pdf.byteLength, written, engine, ...(made.fetched === undefined ? {} : { fetched: made.fetched }) };
   }
 }
 
@@ -213,5 +265,14 @@ class LatexToPdfSettingTab extends PluginSettingTab {
           .setValue(this.plugin.program)
           .onChange((value) => void this.plugin.setProgram(value)),
       );
+    new Setting(this.containerEl)
+      .setName("Engine")
+      .setDesc("What builds a document. The built-in engine is pdfTeX: it needs no LaTeX on the computer, and fetches the classes, packages and fonts a document uses the first time it uses them.")
+      .addDropdown((dropdown) => {
+        for (const engine of ENGINES) {
+          dropdown.addOption(engine, ENGINE_NAMES[engine]);
+        }
+        dropdown.setValue(this.plugin.engine).onChange((value) => void this.plugin.setEngine(engineChoiceOf(value)));
+      });
   }
 }
