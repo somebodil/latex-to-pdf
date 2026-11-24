@@ -29,9 +29,38 @@ export function isLatexNote(path: string): boolean {
   return /\.tex\.md$/i.test(path);
 }
 
-/** Where the PDF of a note is written: beside the note, under its name. `Folder/Resume.tex.md` gives `Folder/Resume.pdf`. */
-export function pdfPathOf(notePath: string): string {
-  return notePath.replace(/(\.tex)?\.md$/i, "") + ".pdf";
+/**
+ * The place a note asks for its PDF with the property `pdf`, as it is
+ * written there, or null when the note has no such property.
+ */
+export function askedPdfOf(note: string): string | null {
+  const properties = /^---\r?\n([\s\S]*?)\r?\n---[ \t]*(\r?\n|$)/.exec(note)?.[1];
+  const line = properties === undefined ? null : /^pdf[ \t]*:[ \t]*(.*)$/m.exec(properties);
+  const value = (line?.[1] ?? "").trim().replace(/^(["'])(.*)\1$/, "$2").trim();
+  return value === "" ? null : value;
+}
+
+/**
+ * Where the PDF of a note is written, from the root of the vault.
+ *
+ * Told nothing, beside the note and under its name: `Folder/Resume.tex.md`
+ * gives `Folder/Resume.pdf`. A note that asks for a place gets that one: a
+ * path from the root of the vault, as `Resume.pdf` for the top of the vault
+ * or `Papers/CV.pdf`. Null for a place that is not inside the vault, or
+ * that is not a PDF: a build never writes over a file of another kind.
+ *
+ * @param asked what the property `pdf` of the note says: see `askedPdfOf`
+ */
+export function pdfPathOf(notePath: string, asked: string | null = null): string | null {
+  if (asked === null) {
+    return notePath.replace(/(\.tex)?\.md$/i, "") + ".pdf";
+  }
+  const path = asked.trim().replace(/^\/+/, "");
+  if (path === "" || /[\\:*?"<>|]/.test(path) || /\p{Cc}/u.test(path) || !/\.pdf$/i.test(path)) {
+    return null;
+  }
+  const parts = path.split("/");
+  return parts.some((part) => part === "" || part === "." || part === ".." || part !== part.trim() || part.startsWith(".")) ? null : path;
 }
 
 /**

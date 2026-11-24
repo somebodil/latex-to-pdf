@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { errorOf, isLatexNote, latexOf, pdfPathOf, programOf, wantsAnotherRun } from "./latex.ts";
+import { askedPdfOf, errorOf, isLatexNote, latexOf, pdfPathOf, programOf, wantsAnotherRun } from "./latex.ts";
 
 const document = "\\documentclass{article}\n\\begin{document}\nHello\n\\end{document}";
 
@@ -35,6 +35,32 @@ describe("pdfPathOf and isLatexNote", () => {
     assert.equal(pdfPathOf("10_Private/Resume.tex.md"), "10_Private/Resume.pdf");
     assert.equal(pdfPathOf("Paper.md"), "Paper.pdf");
     assert.equal(pdfPathOf("a.b/c.d.TEX.MD"), "a.b/c.d.pdf");
+  });
+
+  it("puts the PDF where the note asks for it, from the root of the vault", () => {
+    assert.equal(pdfPathOf("10_Private/Resume.tex.md", "Resume.pdf"), "Resume.pdf");
+    assert.equal(pdfPathOf("10_Private/Resume.tex.md", " /Papers/My CV.PDF "), "Papers/My CV.PDF");
+    assert.equal(pdfPathOf("a/b.md", "이력서/이력서.pdf"), "이력서/이력서.pdf");
+  });
+
+  it("takes no place outside the vault, and none that is not a PDF", () => {
+    for (const asked of ["", "/", "../Resume.pdf", "a/../b.pdf", "a//b.pdf", "a\\b.pdf", "C:/b.pdf", "Resume", "Resume.md", "notes/Resume.tex.md", ".obsidian/x.pdf", "a/.git/x.pdf", "a /b.pdf", "a\tb.pdf"]) {
+      assert.equal(pdfPathOf("a/b.md", asked), null, asked);
+    }
+  });
+
+  it("reads the place from the property of the note", () => {
+    assert.equal(askedPdfOf("---\ntype: private\npdf: Resume.pdf\n---\n\n```\nx\n```\n"), "Resume.pdf");
+    assert.equal(askedPdfOf('---\r\npdf :  "Papers/My CV.pdf"  \r\n---\r\n'), "Papers/My CV.pdf");
+    assert.equal(askedPdfOf("---\npdf: 'a.pdf'\n---"), "a.pdf");
+  });
+
+  it("finds no place where the note has no such property", () => {
+    assert.equal(askedPdfOf("---\ntype: private\n---\n\npdf: not a property\n"), null);
+    assert.equal(askedPdfOf("---\npdf:\nother: 1\n---\n"), null);
+    assert.equal(askedPdfOf("---\nmypdf: a.pdf\n---\n"), null);
+    assert.equal(askedPdfOf("pdf: a.pdf\n"), null);
+    assert.equal(askedPdfOf(""), null);
   });
 
   it("knows a note that is named as a LaTeX document", () => {

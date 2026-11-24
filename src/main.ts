@@ -1,7 +1,7 @@
-import { FileSystemAdapter, Notice, Plugin, PluginSettingTab, Setting, TFile, type App } from "obsidian";
+import { FileSystemAdapter, normalizePath, Notice, Plugin, PluginSettingTab, Setting, TFile, type App } from "obsidian";
 import { dirname, join } from "node:path";
 import { compile, findProgram } from "./compile.ts";
-import { isLatexNote, latexOf, pdfPathOf, programOf } from "./latex.ts";
+import { askedPdfOf, isLatexNote, latexOf, pdfPathOf, programOf } from "./latex.ts";
 import { samePdf } from "./pdf.ts";
 
 /**
@@ -147,10 +147,17 @@ export default class LatexToPdfPlugin extends Plugin {
     if (!(vault.adapter instanceof FileSystemAdapter)) {
       throw new Error("A PDF is built on a computer only: the LaTeX program runs there.");
     }
-    const latex = latexOf(await vault.read(note));
+    const text = await vault.read(note);
+    const latex = latexOf(text);
     if (latex === null) {
       throw new Error(`"${note.path}" holds no LaTeX document: it is looked for in a block of code.`);
     }
+    // Before the document is built: a place that cannot be written to is a mistake in the note, and it is said at once
+    const asked = pdfPathOf(note.path, askedPdfOf(text));
+    if (asked === null) {
+      throw new Error(`The property "pdf" of "${note.path}" does not name a PDF inside the vault: write its path from the root of the vault, as Papers/Resume.pdf.`);
+    }
+    const path = normalizePath(asked);
     const name = programOf(latex) ?? this.config.program;
     const program = findProgram(name);
     if (program === null) {
@@ -158,7 +165,10 @@ export default class LatexToPdfPlugin extends Plugin {
     }
     const made = await compile(latex, program, join(vault.adapter.getBasePath(), dirname(note.path)));
 
-    const path = pdfPathOf(note.path);
+    const folder = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "";
+    if (folder !== "" && !(await vault.adapter.exists(folder))) {
+      await vault.createFolder(folder);
+    }
     const data = made.pdf.buffer.slice(made.pdf.byteOffset, made.pdf.byteOffset + made.pdf.byteLength) as ArrayBuffer;
     const there = vault.getAbstractFileByPath(path);
     let written = true;

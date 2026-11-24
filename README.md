@@ -2,7 +2,7 @@
 
 An [Obsidian](https://obsidian.md) plugin that builds the LaTeX in a note into a PDF beside the note.
 
-A note keeps a LaTeX document in a block of code, where Obsidian shows it as it is written. The plugin hands the document to the LaTeX program of your computer and puts the PDF next to the note: `Papers/Resume.tex.md` gives `Papers/Resume.pdf`.
+A note keeps a LaTeX document in a block of code, where Obsidian shows it as it is written. The plugin hands the document to the LaTeX program of your computer and puts the PDF next to the note, or where the note says: `Papers/Resume.tex.md` gives `Papers/Resume.pdf`.
 
 Not made by Obsidian.
 
@@ -27,7 +27,8 @@ Hello
 ````
 
 - The document is the first block of code that is marked `latex` or `tex`, or that holds `\documentclass`. A note that is nothing but the document, with no block around it, is taken whole, without its properties.
-- A note that is named `Name.tex.md` is a LaTeX note: the command for every note builds these. The PDF is `Name.pdf`.
+- A note that is named `Name.tex.md` is a LaTeX note: the command for every note builds these. The PDF is `Name.pdf`, beside the note.
+- The property `pdf` of a note puts the PDF somewhere else: a path from the root of the vault, as `pdf: Resume.pdf` for the top of the vault or `pdf: Papers/CV.pdf`. A folder that is not there is made. The path has to end in `.pdf` and to stay inside the vault: a build never writes over a file of another kind.
 - A file the document takes in by name, as a picture or another `.tex` file, is looked for in the folder of the note.
 - A comment among the first lines chooses the program for one document, as editors of LaTeX read it: `% !TEX program = xelatex`. The programs are `pdflatex`, `xelatex` and `lualatex`. Without the comment, the program of the settings is used: to begin with, `pdflatex`.
 
@@ -63,7 +64,7 @@ The run builds every note that is named `.tex.md`, or the notes it is given: `--
 
 ## What was tried, and what was not
 
-- **Tried** in Obsidian 1.15.1 on a Mac with the `pdflatex` of TeX Live, through obsidian-cmd-runner: a résumé of two pages with nine packages, built into the PDF beside its note, the same text as the PDF made from it elsewhere. A second build left the PDF as it was.
+- **Tried** in Obsidian 1.15.1 on a Mac with the `pdflatex` of TeX Live, through obsidian-cmd-runner: a résumé of two pages with nine packages, built into the PDF beside its note and, with the property `pdf`, into one at the top of the vault, the same text as the PDF made from it elsewhere. A second build left the PDF as it was.
 - **Not tried:** the commands by hand in the window, `xelatex` and `lualatex`, Windows and Linux, and a document that takes in files.
 
 ## Development
