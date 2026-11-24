@@ -1,4 +1,4 @@
-import { FileSystemAdapter, normalizePath, Notice, Plugin, PluginSettingTab, requestUrl, Setting, TFile, type App } from "obsidian";
+import { FileSystemAdapter, normalizePath, Notice, Plugin, PluginSettingTab, requestUrl, Setting, TFile, type App, type SettingDefinitionItem } from "obsidian";
 import { dirname, join } from "node:path";
 import inlined from "inlined-engine";
 import { compileBuiltIn, type BuiltIn } from "./builtin.ts";
@@ -245,6 +245,18 @@ export default class LatexToPdfPlugin extends Plugin {
   }
 }
 
+/** The words of the settings: said once, for the Obsidian that reads them as a list and for the one that is given them drawn */
+const PROGRAM_SETTING = {
+  key: "program",
+  name: "LaTeX program",
+  desc: "The program that builds a document which asks for none: its name, as pdflatex, xelatex or lualatex, or the whole path of its file.",
+} as const;
+const ENGINE_SETTING = {
+  key: "engine",
+  name: "Engine",
+  desc: "What builds a document. The built-in engine is pdfTeX: it needs no LaTeX on the computer, and fetches the classes, packages and fonts a document uses the first time it uses them.",
+} as const;
+
 class LatexToPdfSettingTab extends PluginSettingTab {
   private readonly plugin: LatexToPdfPlugin;
 
@@ -253,11 +265,46 @@ class LatexToPdfSettingTab extends PluginSettingTab {
     this.plugin = plugin;
   }
 
+  /**
+   * The settings as a list. Obsidian 1.13 and later draws them from it, and
+   * finds them when the settings are searched; it does not call `display`.
+   */
+  override getSettingDefinitions(): SettingDefinitionItem[] {
+    return [
+      {
+        name: PROGRAM_SETTING.name,
+        desc: PROGRAM_SETTING.desc,
+        aliases: ["pdflatex", "xelatex", "lualatex"],
+        control: { type: "text", key: PROGRAM_SETTING.key, placeholder: DEFAULT_SETTINGS.program, defaultValue: DEFAULT_SETTINGS.program },
+      },
+      {
+        name: ENGINE_SETTING.name,
+        desc: ENGINE_SETTING.desc,
+        aliases: ["pdfTeX", "built-in"],
+        control: { type: "dropdown", key: ENGINE_SETTING.key, options: { ...ENGINE_NAMES }, defaultValue: DEFAULT_SETTINGS.engine },
+      },
+    ];
+  }
+
+  /** The settings are kept by the plugin, which makes them right before it keeps them: so they are read from it and given to it */
+  override getControlValue(key: string): unknown {
+    return key === PROGRAM_SETTING.key ? this.plugin.program : key === ENGINE_SETTING.key ? this.plugin.engine : undefined;
+  }
+
+  override async setControlValue(key: string, value: unknown): Promise<void> {
+    if (key === PROGRAM_SETTING.key) {
+      await this.plugin.setProgram(typeof value === "string" ? value : "");
+    } else if (key === ENGINE_SETTING.key) {
+      await this.plugin.setEngine(engineChoiceOf(value));
+    }
+  }
+
+  /** For Obsidian before 1.13, which knows nothing of the list above */
   override display(): void {
     this.containerEl.empty();
     new Setting(this.containerEl)
-      .setName("LaTeX program")
-      .setDesc("The program that builds a document which asks for none: its name, as pdflatex, xelatex or lualatex, or the whole path of its file.")
+      .setName(PROGRAM_SETTING.name)
+      .setDesc(PROGRAM_SETTING.desc)
       .addText((text) =>
         text
           .setPlaceholder(DEFAULT_SETTINGS.program)
@@ -265,8 +312,8 @@ class LatexToPdfSettingTab extends PluginSettingTab {
           .onChange((value) => void this.plugin.setProgram(value)),
       );
     new Setting(this.containerEl)
-      .setName("Engine")
-      .setDesc("What builds a document. The built-in engine is pdfTeX: it needs no LaTeX on the computer, and fetches the classes, packages and fonts a document uses the first time it uses them.")
+      .setName(ENGINE_SETTING.name)
+      .setDesc(ENGINE_SETTING.desc)
       .addDropdown((dropdown) => {
         for (const engine of ENGINES) {
           dropdown.addOption(engine, ENGINE_NAMES[engine]);

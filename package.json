@@ -1,6 +1,6 @@
 {
   "name": "latex-to-pdf",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Obsidian plugin that builds the LaTeX in a note into a PDF beside the note",
   "private": true,
   "type": "module",
